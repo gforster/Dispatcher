@@ -1,0 +1,2 @@
+failed to get queue on aws, probably doesn't exist: AWS.SimpleQueueService.NonExistentQueue: The specified queue does not exist for this wsdl version.
+	status code: 400, request id: 45a56b54-6c9b-55b8-adbe-39ed830274f8
