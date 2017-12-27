@@ -22,6 +22,10 @@ var sqsregion string
 var snstopic string
 var snstopicarn string
 
+var defaulttoemail string
+var defaultmailserver string
+var defaultfromemail string
+
 var useaws bool
 
 type ActionMessage struct {
@@ -189,8 +193,8 @@ func handleSplunkTrigger(w http.ResponseWriter, r *http.Request) {
 
 	dstcontact, ok := jsonParsed.Path("result.dstcontact").Data().(string)
 	if ! ok {
-		Log("dstcontact missing: setting to unixadmins@creditacceptance.com", 0)
-		dstcontact = "unixadmins@creditacceptance.com"
+		Log("dstcontact missing: setting to " + defaulttoemail, 0)
+		dstcontact = defaulttoemail
 	}
 
 	queue, _ := GetSQSUrl(sqsname)
@@ -307,7 +311,7 @@ func Log(message string, level int) error {
 	if err != nil {
 		_, err := SendSNSMessage("Dispatcher: Failed To Write To Log", snstopicarn)
 		if err != nil {
-			err := SendSMTPMessage("smtp.cac.com", "dispatcher@creditacceptance.com", "unixadmins@creditacceptance.com", "Can't Write To Log", err.Error())
+			err := SendSMTPMessage(defaultmailserver, defaultfromemail, defaulttoemail, "Can't Write To Log", err.Error())
 			if err != nil {
 				fmt.Println("All Forms Of Communication Are Down")
 				return err
@@ -323,7 +327,7 @@ func Log(message string, level int) error {
 	if err != nil {
                 _, err := SendSNSMessage("Dispatcher: Failed To Write To Log", snstopicarn)
                 if err != nil {
-                        err := SendSMTPMessage("smtp.cac.com", "dispatcher@creditacceptance.com", "unixadmins@creditacceptance.com", "Can't Write To Log", err.Error())
+                        err := SendSMTPMessage(defaultmailserver, defaultfromemail, defaulttoemail, "Can't Write To Log", err.Error())
 			if err != nil {
 				fmt.Println("All Forms Of Communication Are Down")
 				return err
