@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"bytes"
 	"strconv"
-//        "io/ioutil"
-//        "encoding/json"
-//	"github.com/jeffail/gabs"
+        "io/ioutil"
+        //"encoding/json"
+	"github.com/jeffail/gabs"
 	"net/http"
 	"net/smtp"
 	"github.com/gorilla/mux"
@@ -162,7 +162,6 @@ func handleTrigger(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleSplunkTrigger(w http.ResponseWriter, r *http.Request) {
-/*
 	bsplunkmsg, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 
@@ -174,10 +173,50 @@ func handleSplunkTrigger(w http.ResponseWriter, r *http.Request) {
 
 	jsonParsed, err := gabs.ParseJSON(bsplunkmsg)
 
-	// Need Splunk Payload
-	// https://docs.splunk.com/Documentation/SplunkCloud/6.6.3/Alert/Webhooks
-	value, ok := jsonParsed.Path("").Data()
-*/
+	dsthost, ok := jsonParsed.Path("result.dsthost").Data().(string)
+	if ! ok {
+		fmt.Fprintf(w, "failed to parse result from splunk json: missing dsthost")
+		Log("failed to parse result from splunk json: missing dsthost", 0)
+		return
+	}
+
+	dstfn, ok := jsonParsed.Path("result.dstfn").Data().(string)
+	if ! ok {
+		fmt.Fprintf(w, "failed to parse result from splunk json: missing dstfn")
+		Log("failed to parse result from splunk json: missing dstfn", 0)
+		return
+	}
+
+	dstcontact, ok := jsonParsed.Path("result.dstcontact").Data().(string)
+	if ! ok {
+		Log("dstcontact missing: setting to unixadmins@creditacceptance.com", 0)
+		dstcontact = "unixadmins@creditacceptance.com"
+	}
+
+	queue, _ := GetSQSUrl(sqsname)
+
+	if queue == "" {
+		queue, err = CreateSQS(sqsname)
+		if err != nil {
+			fmt.Fprintf(w, "failed to handle event")
+			Log("failed to create Queue on AWS: " + err.Error(), 0)
+			return
+		}
+	}
+
+	action := ActionMessage{}
+	action.Host = dsthost 
+	action.Action = dstfn
+	action.Contact = dstcontact 
+
+	messageid, err := SendSQSMessage(queue, &action)
+	if err != nil {
+		fmt.Fprintf(w, "failed to insert message into sqs: " + err.Error())
+		return
+	}
+
+	Log("inserted message into SQS: " + messageid, 0)
+	fmt.Fprintf(w, "successfully added message to sqs: " + messageid)
 }
 
 func SendSQSMessage(sqsname string, actionmsg *ActionMessage) (string, error) {
